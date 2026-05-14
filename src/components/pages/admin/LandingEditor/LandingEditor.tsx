@@ -8,6 +8,33 @@ import { Input } from "../../../atoms/Input/Input";
 import { Badge } from "../../../atoms/Badge/Badge";
 import { H1 } from "../../../atoms/Typography/Typography";
 import { Spinner } from "../../../atoms/Spinner/Spinner";
+import { HeroEditor } from "./editors/HeroEditor";
+import { StatsEditor } from "./editors/StatsEditor";
+import { ContactEditor } from "./editors/ContactEditor";
+import { FooterEditor } from "./editors/FooterEditor";
+import { CollieAppEditor } from "./editors/CollieAppEditor";
+import { GenericEditor } from "./editors/GenericEditor";
+
+function getSectionEditor(
+  sectionKey: string,
+  content: Record<string, unknown>,
+  onChange: (content: Record<string, unknown>) => void,
+) {
+  switch (sectionKey) {
+    case "hero":
+      return <HeroEditor content={content} onChange={onChange} />;
+    case "stats":
+      return <StatsEditor content={content} onChange={onChange} />;
+    case "contact":
+      return <ContactEditor content={content} onChange={onChange} />;
+    case "footer":
+      return <FooterEditor content={content} onChange={onChange} />;
+    case "collie_app":
+      return <CollieAppEditor content={content} onChange={onChange} />;
+    default:
+      return <GenericEditor content={content} onChange={onChange} />;
+  }
+}
 
 export function LandingEditor() {
   const [sections, setSections] = useState<LandingSection[]>([]);
@@ -16,7 +43,7 @@ export function LandingEditor() {
   const [editForm, setEditForm] = useState({
     title: "",
     subtitle: "",
-    content: "",
+    content: {} as Record<string, unknown>,
     display_order: 0,
     is_visible: true,
   });
@@ -52,7 +79,7 @@ export function LandingEditor() {
     setEditForm({
       title: section.title,
       subtitle: section.subtitle,
-      content: JSON.stringify(section.content, null, 2),
+      content: section.content,
       display_order: section.display_order,
       is_visible: section.is_visible,
     });
@@ -62,26 +89,17 @@ export function LandingEditor() {
     if (!editingKey) return;
     setSaving(true);
     try {
-      let parsedContent: Record<string, unknown> = {};
-      try {
-        parsedContent = JSON.parse(editForm.content);
-      } catch {
-        alert("El contenido JSON no es válido");
-        setSaving(false);
-        return;
-      }
-
       await landingService.updateSection(editingKey, {
         title: editForm.title,
         subtitle: editForm.subtitle,
-        content: parsedContent,
+        content: editForm.content,
         display_order: editForm.display_order,
         is_visible: editForm.is_visible,
       });
       setEditingKey(null);
       await loadSections();
     } catch {
-      // handle error
+      alert("Error al guardar la sección");
     } finally {
       setSaving(false);
     }
@@ -95,7 +113,7 @@ export function LandingEditor() {
       try {
         parsedContent = JSON.parse(newSection.content);
       } catch {
-        alert("El contenido JSON no es válido");
+        alert("El contenido JSON no es valido");
         setSaving(false);
         return;
       }
@@ -119,7 +137,7 @@ export function LandingEditor() {
       });
       await loadSections();
     } catch {
-      // handle error
+      alert("Error al crear la sección");
     } finally {
       setSaving(false);
     }
@@ -130,6 +148,20 @@ export function LandingEditor() {
       await landingService.deleteSection(key);
       await loadSections();
     }
+  };
+
+  const sectionLabel = (key: string) => {
+    const labels: Record<string, string> = {
+      hero: "Hero Principal",
+      stats: "Estadísticas",
+      products: "Productos",
+      services: "Servicios",
+      cta: "Llamada a la acción",
+      contact: "Contacto (QR)",
+      footer: "Footer",
+      collie_app: "Collie App",
+    };
+    return labels[key] || key;
   };
 
   if (loading) {
@@ -156,14 +188,29 @@ export function LandingEditor() {
         >
           <h3 className="mb-4 text-lg font-medium">Crear sección</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label="Clave (ej: hero, products, services)"
-              value={newSection.section_key}
-              onChange={(e) =>
-                setNewSection((p) => ({ ...p, section_key: e.target.value }))
-              }
-              required
-            />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Tipo de sección
+              </label>
+              <select
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900"
+                value={newSection.section_key}
+                onChange={(e) =>
+                  setNewSection((p) => ({ ...p, section_key: e.target.value }))
+                }
+                required
+              >
+                <option value="">Seleccionar...</option>
+                <option value="hero">Hero Principal</option>
+                <option value="stats">Estadísticas</option>
+                <option value="products">Productos</option>
+                <option value="services">Servicios</option>
+                <option value="cta">Llamada a la acción</option>
+                <option value="contact">Contacto (QR)</option>
+                <option value="footer">Footer</option>
+                <option value="collie_app">Collie App</option>
+              </select>
+            </div>
             <Input
               label="Título"
               value={newSection.title}
@@ -218,6 +265,11 @@ export function LandingEditor() {
           >
             {editingKey === section.section_key ? (
               <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="rounded bg-collie-100 px-2 py-1 text-xs font-medium text-collie-700">
+                    {sectionLabel(section.section_key)}
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Input
                     label="Título"
@@ -261,19 +313,18 @@ export function LandingEditor() {
                     </label>
                   </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Contenido (JSON)
-                  </label>
-                  <textarea
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm"
-                    rows={8}
-                    value={editForm.content}
-                    onChange={(e) =>
-                      setEditForm((p) => ({ ...p, content: e.target.value }))
-                    }
-                  />
+
+                <div className="border-t pt-4">
+                  <h4 className="mb-3 text-sm font-semibold text-gray-700">
+                    Contenido de la sección
+                  </h4>
+                  {getSectionEditor(
+                    section.section_key,
+                    editForm.content,
+                    (content) => setEditForm((p) => ({ ...p, content })),
+                  )}
                 </div>
+
                 <div className="flex gap-2">
                   <Button onClick={handleSave} isLoading={saving}>
                     Guardar
@@ -291,7 +342,7 @@ export function LandingEditor() {
                 <div>
                   <div className="flex items-center gap-3">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {section.section_key}
+                      {sectionLabel(section.section_key)}
                     </h3>
                     <Badge
                       variant={section.is_visible ? "success" : "neutral"}

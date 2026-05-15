@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
-import { DASHBOARD_ROUTES } from "../../../routes/roleRoutes";
 
 interface NavLink {
   label: string;

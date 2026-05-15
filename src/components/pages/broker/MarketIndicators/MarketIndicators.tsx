@@ -1,5 +1,4 @@
 import { H1, Paragraph } from "../../../atoms/Typography/Typography";
-import { StatCard } from "../../../molecules/StatCard/StatCard";
 
 // Mock market data — will be replaced with real API data when available
 const MARKET_DATA = {
